@@ -1,0 +1,2 @@
+source .env
+dotnet run
