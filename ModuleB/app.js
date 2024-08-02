@@ -4,9 +4,24 @@ var Transport = require('azure-iot-device-mqtt').Mqtt;
 //var Transport = require('azure-iot-device-amqp').Amqp;
 var Client = require('azure-iot-device').ModuleClient;
 var Message = require('azure-iot-device').Message;
+var crypto = require('crypto');
 require('log-timestamp');
 
 var lastSeq = 0;
+var tokenValidTimeInSeconds = 60;
+var tokenRenewalMarginInSeconds = 5;
+var wait = 0;
+if (process.env.TOKEN_VALID_TIME) {
+  tokenValidTimeInSeconds = parseInt(process.env.TOKEN_VALID_TIME);
+}
+if (process.env.TOKEN_RENEWAL_MARGIN) {
+  tokenRenewalMarginInSeconds = parseInt(process.env.TOKEN_RENEWAL_MARGIN);
+}
+if (process.env.WAIT) {
+  wait = parseInt(process.env.WAIT);
+}
+
+console.log(`tokenValidTimeInSeconds:${tokenValidTimeInSeconds}, tokenRenewalMarginInSeconds:${tokenRenewalMarginInSeconds}`);
 
 Client.fromEnvironment(Transport, function (err, client) {
   if (err) {
@@ -15,8 +30,8 @@ Client.fromEnvironment(Transport, function (err, client) {
   } else {
     let options = client._methodClient._options;
     options.tokenRenewal = {
-      tokenValidTimeInSeconds: 10,
-      tokenRenewalMarginInSeconds: 5
+      tokenValidTimeInSeconds: tokenValidTimeInSeconds,
+      tokenRenewalMarginInSeconds: tokenRenewalMarginInSeconds
     };
     client.setOptions(options);
     client.open(function (err) {
@@ -34,7 +49,6 @@ Client.fromEnvironment(Transport, function (err, client) {
 
 // This function just pipes the messages without any change.
 function pipeMessage(client, inputName, msg) {
-  client.complete(msg, printResultFor('Receiving message'));
 
   if (inputName === 'input1') {
     var message = msg.getBytes().toString('utf8');
@@ -42,10 +56,14 @@ function pipeMessage(client, inputName, msg) {
     const seq = parseInt(msg.properties.getValue('sequenceNumber'), 10);
     console.log(`${date}: ${seq}`);
     if (lastSeq != 0 && seq != lastSeq+1) {
-      console.warn(`${date}: seq# ${lastSeq+1} skipped`);
+      console.warn(`${date}: Error expected: ${lastSeq+1}, actual: ${seq}`);
     }
     lastSeq = seq;
+    if (wait > 0) {
+      crypto.randomBytes(wait ** 3);
+    }
   }
+  client.complete(msg, printResultFor('Receiving message'));
 }
 
 // Helper function to print results in the console

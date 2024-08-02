@@ -39,21 +39,41 @@ internal class ModuleBackgroundService : BackgroundService
 
     async Task SendEvents(CancellationToken cancellationToken)
     {
-        int messageDelayMilli = 100;
+        int messageDelayMilli = 5;
         int count = 1;
-        int dataSize = 10;
+        int batchSize = 1;
+        int dataSize = 64*1024*1024;
+        string? dataSizeString = Environment.GetEnvironmentVariable("DATA_SIZE");
+        if (!string.IsNullOrEmpty(dataSizeString))
+        {
+            dataSize = Int32.Parse(dataSizeString);
+        }
+        string? batchSizeString = Environment.GetEnvironmentVariable("BATCH_SIZE");
+        if (!string.IsNullOrEmpty(batchSizeString))
+        {
+            batchSize = Int32.Parse(batchSizeString);
+        }
+        string? messageDelayString = Environment.GetEnvironmentVariable("MESSAGE_DELAY");
+        if (!string.IsNullOrEmpty(messageDelayString))
+        {
+            messageDelayMilli = Int32.Parse(messageDelayString);
+        }
+        _logger.LogInformation($"DataSize:{dataSize}, batchSize:{batchSize}, messageDelay:{messageDelayMilli}");
 
+        string messageString = new string('*', dataSize);
         while (!cancellationToken.IsCancellationRequested)
         {
-            string messageString = new string('*', dataSize);
-            using Message message = new(Encoding.UTF8.GetBytes(messageString));
-            message.ContentEncoding = "utf-8";
-            message.ContentType = "text/plain";
-            message.Properties.Add("sequenceNumber", count.ToString());
-            string timestamp = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
-            _logger.LogInformation($"{timestamp} Send message: {count}, Size: [{dataSize}]");
-            await _moduleClient!.SendEventAsync("output1", message, cancellationToken);
-            count++;
+            for (int i = 0; i < batchSize; i++)
+            {
+              using Message message = new(Encoding.UTF8.GetBytes(messageString));
+              message.ContentEncoding = "utf-8";
+              message.ContentType = "text/plain";
+              message.Properties.Add("sequenceNumber", count.ToString());
+              string timestamp = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+              _logger.LogInformation($"{timestamp} Send message: {count}, Size: [{dataSize}]");
+              await _moduleClient!.SendEventAsync("output1", message, cancellationToken);
+              count++;
+            }
             await Task.Delay(messageDelayMilli, cancellationToken);
         }
     }
