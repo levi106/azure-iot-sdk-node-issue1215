@@ -13,6 +13,8 @@ internal class ModuleBackgroundService : BackgroundService
     private CancellationToken _cancellationToken;
     private readonly ILogger<ModuleBackgroundService> _logger;
 
+    private bool _isActive = true;
+
     public ModuleBackgroundService(ILogger<ModuleBackgroundService> logger) => _logger = logger;
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -34,15 +36,31 @@ internal class ModuleBackgroundService : BackgroundService
 
         _logger.LogInformation("IoT Hub module client initialized.");
 
+        await _moduleClient.SetInputMessageHandlerAsync("input1", ProcessMessageAsync, null, cancellationToken);
         await SendEvents(cancellationToken);
+    }
+
+    Task<MessageResponse> ProcessMessageAsync(Message message, object userContext)
+    {
+        byte[] messageBytes = message.GetBytes();
+        string messageString = Encoding.UTF8.GetString(messageBytes);
+        _logger.LogInformation("Received message: [{messageString}]", messageString);
+        if (!string.IsNullOrEmpty(messageString))
+        {
+            if (messageString.Contains("stop"))
+            {
+                _isActive = false;
+            }
+        }
+        return Task.FromResult(MessageResponse.Completed);
     }
 
     async Task SendEvents(CancellationToken cancellationToken)
     {
-        int messageDelayMilli = 5;
+        int messageDelayMilli = 500;
         int count = 1;
-        int batchSize = 1;
-        int dataSize = 64*1024*1024;
+        int batchSize = 50;
+        int dataSize = 3;
         string? dataSizeString = Environment.GetEnvironmentVariable("DATA_SIZE");
         if (!string.IsNullOrEmpty(dataSizeString))
         {
@@ -61,7 +79,7 @@ internal class ModuleBackgroundService : BackgroundService
         _logger.LogInformation($"DataSize:{dataSize}, batchSize:{batchSize}, messageDelay:{messageDelayMilli}");
 
         string messageString = new string('*', dataSize);
-        while (!cancellationToken.IsCancellationRequested)
+        while (!cancellationToken.IsCancellationRequested && _isActive)
         {
             for (int i = 0; i < batchSize; i++)
             {

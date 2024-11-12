@@ -43,6 +43,16 @@
                         "route": "FROM /messages/modules/ModuleA/outputs/output1 INTO BrokeredEndpoint(\"/modules/ModuleB/inputs/input1\")",
                         "priority": 0,
                         "timeToLiveSecs": 1800
+                    },
+                    "moduleB2moduleA": {
+                        "route": "FROM /messages/modules/ModuleB/outputs/output1 INTO BrokeredEndpoint(\"/modules/ModuleA/inputs/input1\")",
+                        "priority": 1,
+                        "timeToLiveSecs": 1800
+                    },
+                    "moduleB2moduleC": {
+                        "route": "FROM /messages/modules/ModuleB/outputs/output2 INTO BrokeredEndpoint(\"/modules/ModuleC/inputs/input1\")",
+                        "priority": 1,
+                        "timeToLiveSecs": 1800
                     }
                 }
             }
