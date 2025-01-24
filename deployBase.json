@@ -10,7 +10,7 @@
                 "systemModules": {
                     "edgeAgent": {
                         "settings": {
-                            "image": "mcr.microsoft.com/azureiotedge-agent:1.4"
+                            "image": "mcr.microsoft.com/azureiotedge-agent:1.5.15"
                         },
                         "type": "docker"
                     },
@@ -22,14 +22,49 @@
                         },
                         "restartPolicy": "always",
                         "settings": {
-                            "image": "mcr.microsoft.com/azureiotedge-hub:1.4",
+                            "image": "mcr.microsoft.com/azureiotedge-hub:1.5.15",
                             "createOptions": "{\"HostConfig\":{\"PortBindings\":{\"443/tcp\":[{\"HostPort\":\"443\"}],\"5671/tcp\":[{\"HostPort\":\"5671\"}],\"8883/tcp\":[{\"HostPort\":\"8883\"}]}}}"
                         },
                         "status": "running",
                         "type": "docker"
                     }
                 },
-                "modules": {}
+                "modules": {
+                    "ModuleA": {
+                        "env": {
+                            "BATCH_SIZE": {
+                                "value": 10
+                            }
+                        },
+                        "restartPolicy": "always",
+                        "settings": {
+                            "image": "edge240814.azurecr.io/samples/modulea:0.3.1"
+                        },
+                        "status": "running",
+                        "type": "docker"
+                    },
+                    "ModuleB": {
+                        "env": {
+                            "DEBUG": {
+                                "value": "azure-iot-*,mqttjs:*"
+                            }
+                        },
+                        "restartPolicy": "always",
+                        "settings": {
+                            "image": "edge240814.azurecr.io/samples/moduleb:0.3.1"
+                        },
+                        "status": "running",
+                        "type": "docker"
+                    },
+                    "ModuleC": {
+                        "restartPolicy": "always",
+                        "settings": {
+                            "image": "edge240814.azurecr.io/samples/modulec:0.3.1"
+                        },
+                        "status": "running",
+                        "type": "docker"
+                    }
+                }
             }
         },
         "$edgeHub": {
@@ -40,19 +75,16 @@
                 },
                 "routes": {
                     "moduleA2moduleB": {
-                        "route": "FROM /messages/modules/ModuleA/outputs/output1 INTO BrokeredEndpoint(\"/modules/ModuleB/inputs/input1\")",
-                        "priority": 0,
-                        "timeToLiveSecs": 1800
+                        "route": "FROM /messages/modules/ModuleA/outputs/output1 INTO BrokeredEndpoint(\"/modules/ModuleB/inputs/input1\")"
                     },
                     "moduleB2moduleA": {
-                        "route": "FROM /messages/modules/ModuleB/outputs/output1 INTO BrokeredEndpoint(\"/modules/ModuleA/inputs/input1\")",
-                        "priority": 1,
-                        "timeToLiveSecs": 1800
+                        "route": "FROM /messages/modules/ModuleB/outputs/output1 INTO BrokeredEndpoint(\"/modules/ModuleA/inputs/input1\")"
                     },
                     "moduleB2moduleC": {
-                        "route": "FROM /messages/modules/ModuleB/outputs/output2 INTO BrokeredEndpoint(\"/modules/ModuleC/inputs/input1\")",
-                        "priority": 1,
-                        "timeToLiveSecs": 1800
+                        "route": "FROM /messages/modules/ModuleB/outputs/output2 INTO BrokeredEndpoint(\"/modules/ModuleC/inputs/input1\")"
+                    },
+                    "moduleC2moduleA": {
+                        "route": "FROM /messages/modules/ModuleC/outputs/output1 INTO BrokeredEndpoint(\"/modules/ModuleA/inputs/input1\")"
                     }
                 }
             }

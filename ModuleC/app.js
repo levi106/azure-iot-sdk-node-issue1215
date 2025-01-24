@@ -6,6 +6,7 @@ var Message = require('azure-iot-device').Message;
 var crypto = require('crypto');
 require('log-timestamp');
 
+var lastSeq = 0;
 var tokenValidTimeInSeconds = 60*60;
 var tokenRenewalMarginInSeconds = 15;
 if (process.env.TOKEN_VALID_TIME) {
@@ -48,6 +49,11 @@ async function pipeMessage(client, inputName, msg) {
     const stop = msg.properties.getValue('stop') === "true";
     if (stop) {
       console.warn(`${date}: Stopped (seq=${seq})`);
+    }
+    if (lastSeq != 0 && seq > lastSeq+1) {
+      console.warn(`${date}: Error expected: ${lastSeq+1}, actual: ${seq}`);
+      const stopMsg = new Message(data);
+      client.sendOutputEvent('output1', stopMsg, printResultFor('Sending stop message'));
     }
   }
   client.complete(msg, printResultFor('Receiving message'));
